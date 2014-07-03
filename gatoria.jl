@@ -3,9 +3,10 @@ import Base.convert
 
 type Network
     active::Set
+    running::Bool
 end
 
-network = Network(Set())
+network = Network(Set(), false)
 
 type Cell
     content
@@ -69,6 +70,7 @@ function new_neighbor(cell, neighbor)
 end
 
 function content(cell)
+    run()
     from_content(cell.content)
 end
 
@@ -99,10 +101,18 @@ function handles_none(f)
     end
 end
 
-function run() #TODO: do automatically when getting content; don't re-enter
-    while !isempty(network.active)
-        p = pop!(network.active)
-        p.thunk()
+function run()
+    if network.running
+        return
+    end
+    network.running = true
+    try
+        while !isempty(network.active)
+            p = pop!(network.active)
+            p.thunk()
+        end
+    finally
+        network.running = false
     end
 end
 
@@ -160,8 +170,6 @@ end
 k = cell()
 celsius2kelvin(c, k)
 
-run()
-
 println("f: ", content(f))
 println("c: ", content(c))
 println("k: ", content(k))
@@ -199,6 +207,7 @@ function /(x::Interval, y::Interval)
 end
 
 ^(x::Interval, i::Integer) = Interval(x.low ^ i, x.high ^ i)
+^(x::Interval, n::Number) = Interval(x.low ^ n, x.high ^ n)
 
 #XXX handle promotion of N; eg Interval{Int64} and Int32
 promote_rule{N<:Number}(I::Type{Interval{N}}, ::Type{N}) = I
@@ -225,8 +234,6 @@ building_height = cell()
 fall_duration(fall_time, building_height)
 
 add_content(fall_time, Interval(2.9, 3.1))
-
-run()
 
 println("fall_time: ", content(fall_time))
 println("building_height: ", content(building_height))
