@@ -29,50 +29,50 @@ function alert(propagators)
     end
 end
 
-toContent(::Type{None}) = None
-toContent(v::Value) = v
-toContent(n::Number) = Value(n)
+to_content(::Type{None}) = None
+to_content(v::Value) = v
+to_content(n::Number) = Value(n)
 
-fromContent(::Type{None}) = None
-fromContent(v::Value) = v.wrapped
+from_content(::Type{None}) = None
+from_content(v::Value) = v.wrapped
 
 cell() = cell(None)
-cell(x) = Cell(toContent(x), Set())
+cell(x) = Cell(to_content(x), Set())
 
-function joinContent(content::Value, increment::Value)
+function join_content(content::Value, increment::Value)
     if content != increment
         error("Contradiction!")
     end
     content
 end
 
-joinContent(::Type{None}, ::Type{None}) = None
-joinContent(::Type{None}, v::Value) = v
-joinContent(v::Value, ::Type{None}) = v
-joinContent(x, y) = joinContent(promote(toContent(x), toContent(y))...)
+join_content(::Type{None}, ::Type{None}) = None
+join_content(::Type{None}, v::Value) = v
+join_content(v::Value, ::Type{None}) = v
+join_content(x, y) = join_content(promote(to_content(x), to_content(y))...)
 
-function addContent(cell, content)
-    newContent = joinContent(cell.content, content)
-    if cell.content != newContent
-        cell.content = newContent
+function add_content(cell, content)
+    new_content = join_content(cell.content, content)
+    if cell.content != new_content
+        cell.content = new_content
         alert(cell.neighbors)
     end
     cell
 end
 
-function newNeighbor(cell, neighbor)
+function new_neighbor(cell, neighbor)
     push!(cell.neighbors, neighbor)
     alert(neighbor)
 end
 
 function content(cell)
-    fromContent(cell.content)
+    from_content(cell.content)
 end
 
 function propagator(neighbors, thunk)
     p = Propagator(thunk)
     for cell in neighbors
-        newNeighbor(cell, p)
+        new_neighbor(cell, p)
     end
     alert(p)
 end
@@ -81,12 +81,12 @@ function lift(f::Function)
     function(cells...)
         inputs = cells[1:end-1]
         output = last(cells)
-        propagator(inputs, () -> addContent(output,
-                                            f(map(content, inputs)...)))
+        propagator(inputs, () -> add_content(output,
+                                             f(map(content, inputs)...)))
     end
 end
 
-function handlesNone(f)
+function handles_none(f)
     function(args...)
         if any((x) -> x == None, args)
             None
@@ -105,10 +105,10 @@ end
 
 ###########
 
-adder = lift(handlesNone(+))
-subtractor = lift(handlesNone(-))
-multiplier = lift(handlesNone(*))
-divider = lift(handlesNone(/))
+adder = lift(handles_none(+))
+subtractor = lift(handles_none(-))
+multiplier = lift(handles_none(*))
+divider = lift(handles_none(/))
 
 function sum(x, y, total)
     adder(x, y, total)
@@ -125,12 +125,12 @@ end
 ##########
 
 function fahrenheit2celsius(f, c)
-    thirtyTwo = cell(32)
+    thirty_two = cell(32)
     five = cell(5)
     nine = cell(9)
     f32 = cell()
     c9 = cell()
-    sum(thirtyTwo, f32, f)
+    sum(thirty_two, f32, f)
     product(f32, five, c9)
     product(c, nine, c9)
 end
@@ -138,8 +138,8 @@ end
 f = cell()
 c = cell()
 fahrenheit2celsius(f, c)
-#addContent(f, 77)
-addContent(c, 25)
+#add_content(f, 77)
+add_content(c, 25)
 
 function celsius2kelvin(c, k)
     sum(c, cell(273.15), k)
@@ -166,12 +166,12 @@ function intersect(a::Interval, b::Interval)
     i.min > i.max ? None : i
 end
 
-toContent(i::Interval) = i
-fromContent(i::Interval) = i
+to_content(i::Interval) = i
+from_content(i::Interval) = i
 
 #XXX handle promotion of N; eg Interval{Int64} and Int32
 promote_rule{N<:Number}(I::Type{Interval{N}}, ::Type{N}) = I
 convert{N<:Number}(I::Type{Interval{N}}, n::Number) = I(n, n)
-joinContent{N<:Number}(a::Interval{N}, b::Interval{N}) = intersect(a, b)
+join_content{N<:Number}(a::Interval{N}, b::Interval{N}) = intersect(a, b)
 
 #########
