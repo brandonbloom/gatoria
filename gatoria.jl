@@ -190,6 +190,9 @@ end
 +(x::Interval, y::Interval) = Interval(x.low + y.low, x.high + y.high)
 -(x::Interval, y::Interval) = Interval(x.low - y.low, x.high - y.high)
 
+*{N<:Number}(i::Interval{N}, n::N) = i * convert(Interval{N}, n)
+*{N<:Number}(n::N, i::Interval{N}) = convert(Interval{N}, n) * i
+
 function *(x::Interval, y::Interval)
     p1 = x.low * y.low
     p2 = x.low * y.high
@@ -197,6 +200,9 @@ function *(x::Interval, y::Interval)
     p4 = x.high * y.high
     Interval(min(p1, p2, p3, p4), max(p1, p2, p3, p4))
 end
+
+/{N<:Number}(i::Interval{N}, n::N) = i / convert(Interval{N}, n)
+/{N<:Number}(n::N, i::Interval{N}) = convert(Interval{N}, n) / i
 
 function /(x::Interval, y::Interval)
     if y.low <= 0 && 0 <= y.high
@@ -221,7 +227,7 @@ join_content{N<:Number}(x::Interval{N}, y::Interval{N}) = intersect(x, y)
 
 function fall_duration(t, h)
     g = cell(Interval(9.789, 9.832))
-    half = cell(Interval(1/2, 1/2)) #TODO try just 0.5
+    half = cell(0.5)
     t_sq = cell()
     gt_sq = cell()
     quadratic(t, t_sq)
