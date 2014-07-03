@@ -1,3 +1,6 @@
+import Base.promote_rule
+import Base.convert
+
 type Network
     active::Set
 end
@@ -46,7 +49,7 @@ end
 joinContent(::Type{None}, ::Type{None}) = None
 joinContent(::Type{None}, v::Value) = v
 joinContent(v::Value, ::Type{None}) = v
-joinContent(x, y) = joinContent(toContent(x), toContent(y))
+joinContent(x, y) = joinContent(promote(toContent(x), toContent(y))...)
 
 function addContent(cell, content)
     newContent = joinContent(cell.content, content)
@@ -150,3 +153,25 @@ run()
 println("f: ", content(f))
 println("c: ", content(c))
 println("k: ", content(k))
+
+###########
+
+immutable Interval{N<:Number}
+    min::N
+    max::N
+end
+
+function intersect(a::Interval, b::Interval)
+    i = Interval(max(a.min, b.min), min(a.max, b.max))
+    i.min > i.max ? None : i
+end
+
+toContent(i::Interval) = i
+fromContent(i::Interval) = i
+
+#XXX handle promotion of N; eg Interval{Int64} and Int32
+promote_rule{N<:Number}(I::Type{Interval{N}}, ::Type{N}) = I
+convert{N<:Number}(I::Type{Interval{N}}, n::Number) = I(n, n)
+joinContent{N<:Number}(a::Interval{N}, b::Interval{N}) = intersect(a, b)
+
+#########
