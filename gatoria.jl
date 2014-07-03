@@ -17,12 +17,6 @@ type Propagator
     thunk::Function
 end
 
-immutable Value
-    wrapped
-end
-
-==(x::Value, y::Value) = x.wrapped == y.wrapped
-
 alert(p::Propagator) = alert([p])
 function alert(propagators)
     for p in propagators
@@ -30,33 +24,22 @@ function alert(propagators)
     end
 end
 
-to_content(::Type{None}) = None
-to_content(v::Value) = v
-to_content(n::Number) = Value(n)
-
-from_content(::Type{None}) = None
-from_content(v::Value) = v.wrapped
-
 cell() = cell(None)
-cell(x) = Cell(to_content(x), Set())
+cell(x) = Cell(x, Set())
 
-function join_content(content::Value, increment::Value)
-    if content != increment
+function join_content(x, y)
+    if x != y
         error("Contradiction!")
     end
-    content
+    x
 end
 
 join_content(::Type{None}, ::Type{None}) = None
-join_content(::Type{None}, x) = to_content(x)
-join_content(x, ::Type{None}) = to_content(x)
-
-function join_content(x, y)
-    join_content(promote(to_content(x), to_content(y))...)
-end
+join_content(::Type{None}, x) = x
+join_content(x, ::Type{None}) = x
 
 function add_content(cell, content)
-    new_content = join_content(cell.content, content)
+    new_content = join_content(promote(cell.content, content)...)
     if cell.content != new_content
         cell.content = new_content
         alert(cell.neighbors)
@@ -71,7 +54,7 @@ end
 
 function content(cell)
     run()
-    from_content(cell.content)
+    cell.content
 end
 
 function propagator(neighbors, thunk)
@@ -188,7 +171,7 @@ end
 
 ==(x::Interval, y::Interval) = x.low == y.low && x.high == y.high
 +(x::Interval, y::Interval) = Interval(x.low + y.low, x.high + y.high)
--(x::Interval, y::Interval) = Interval(x.low - y.low, x.high - y.high)
+-(x::Interval, y::Interval) = Interval(x.low - y.high, x.high - y.low)
 
 *{N<:Number}(i::Interval{N}, n::N) = i * convert(Interval{N}, n)
 *{N<:Number}(n::N, i::Interval{N}) = convert(Interval{N}, n) * i
@@ -208,7 +191,7 @@ function /(x::Interval, y::Interval)
     if y.low <= 0 && 0 <= y.high
         None #XXX
     else
-        x * Interval(1 / x.high, 1 / x.low)
+        x * Interval(1 / y.high, 1 / y.low)
     end
 end
 
@@ -219,8 +202,6 @@ end
 promote_rule{N<:Number}(I::Type{Interval{N}}, ::Type{N}) = I
 convert{N<:Number}(I::Type{Interval{N}}, n::Number) = I(n, n)
 
-to_content(i::Interval) = i
-from_content(i::Interval) = i
 join_content{N<:Number}(x::Interval{N}, y::Interval{N}) = intersect(x, y)
 
 #########
@@ -235,11 +216,32 @@ function fall_duration(t, h)
     product(half, gt_sq, h)
 end
 
+function similar_triangles(s_ba, h_ba, s, h)
+    ration = cell()
+    product(s_ba, ration, h_ba)
+    product(s, ration, h)
+end
+
 fall_time = cell()
 building_height = cell()
-fall_duration(fall_time, building_height)
+building_shadow = cell()
+barometer_height = cell()
+barometer_shadow = cell()
 
+fall_duration(fall_time, building_height)
 add_content(fall_time, Interval(2.9, 3.1))
+
+similar_triangles(barometer_shadow, barometer_height,
+                  building_shadow, building_height)
+
+add_content(building_shadow, Interval(54.9, 55.1))
+add_content(barometer_height, Interval(0.3, 0.32))
+add_content(barometer_shadow, Interval(0.36, 0.37))
+
+#add_content(building_height, 45.0)
 
 println("fall_time: ", content(fall_time))
 println("building_height: ", content(building_height))
+println("building_shadow: ", content(building_shadow))
+println("barometer_height: ", content(barometer_height))
+println("barometer_shadow: ", content(barometer_shadow))
